@@ -1,0 +1,78 @@
+name: Release
+
+# Builds Zri for macOS (Apple Silicon + Intel), Windows and Linux and publishes
+# a GitHub release whenever a version tag (v1.2.3) is pushed.
+on:
+  push:
+    tags: ['v*']
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  mac:
+    runs-on: macos-14
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: bash scripts/fetch-vendor.sh
+      - run: npx electron-builder --mac --arm64 --x64 --publish never
+      - name: Ad-hoc sign and zip
+        run: |
+          VER=$(node -p "require('./package.json').version")
+          for pair in "mac-arm64:arm64" "mac:x64"; do
+            dir=${pair%%:*}; arch=${pair##*:}
+            APP="dist/$dir/Zri.app"
+            codesign --force --sign - "$APP/Contents/Resources/ffmpeg/ffmpeg"
+            for n in "$APP"/Contents/Resources/koffi/*/koffi.node; do codesign --force --sign - "$n"; done
+            codesign --force --deep --sign - "$APP"
+            codesign --verify --deep --strict --verbose=2 "$APP"
+            ditto -c -k --sequesterRsrc --keepParent "$APP" "dist/Zri-$VER-mac-$arch.zip"
+          done
+      - uses: actions/upload-artifact@v4
+        with:
+          name: mac
+          path: dist/Zri-*-mac-*.zip
+          if-no-files-found: error
+
+  win-linux:
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      - run: bash scripts/fetch-vendor.sh
+      - run: npx electron-builder --win --x64 --publish never
+      - run: npx electron-builder --linux --x64 --publish never
+      - uses: actions/upload-artifact@v4
+        with:
+          name: win-linux
+          path: |
+            dist/Zri-*-win-x64.zip
+            dist/Zri-*.AppImage
+          if-no-files-found: error
+
+  release:
+    needs: [mac, win-linux]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with:
+          path: out
+          merge-multiple: true
+      - name: Checksums
+        run: cd out && sha256sum * > SHA256SUMS.txt && cat SHA256SUMS.txt
+      - uses: softprops/action-gh-release@v2
+        with:
+          name: Zri ${{ github.ref_name }}
+          body_path: .github/release-notes.md
+          files: out/*
