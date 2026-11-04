@@ -1,0 +1,125 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+  canvas { position: fixed; inset: 0; width: 100vw; height: 100vh; }
+  #count {
+    position: fixed; left: 50%; top: 50%; width: 180px; height: 180px; margin: -90px 0 0 -90px;
+    border-radius: 50%; background: rgba(14, 15, 18, .78); color: #fff; display: none;
+    align-items: center; justify-content: center; font: 700 96px/1 -apple-system, "SF Pro Display", "Segoe UI", system-ui, sans-serif;
+    box-shadow: 0 20px 60px rgba(0,0,0,.35), inset 0 0 0 1px rgba(255,255,255,.08);
+    font-variant-numeric: tabular-nums;
+  }
+  #count.show { display: flex; animation: pop .9s ease-out; }
+  #count small { position: absolute; bottom: 30px; font-size: 12px; font-weight: 500; letter-spacing: .02em; opacity: .55; }
+  @keyframes pop { 0% { transform: scale(.7); opacity: 0 } 25% { transform: scale(1.04); opacity: 1 } 100% { transform: scale(1); opacity: 1 } }
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="count"><span id="num">3</span><small id="hint"></small></div>
+<script>
+  const canvas = document.getElementById('c');
+  const ctx = canvas.getContext('2d');
+  let dpr = 1, W = 0, H = 0;
+  function resize() {
+    dpr = window.devicePixelRatio || 1;
+    W = window.innerWidth; H = window.innerHeight;
+    canvas.width = Math.round(W * dpr); canvas.height = Math.round(H * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  }
+  resize();
+  window.addEventListener('resize', resize);
+
+  let color = '#ffd23f';
+  const RIGHT = '#4da3ff';
+  zri.getSettings().then((s) => { color = s.clickColor || color; });
+  zri.onSettings((s) => { color = s.clickColor || color; });
+
+  function rgba(hex, a) {
+    const n = parseInt(hex.slice(1), 16);
+    return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`;
+  }
+
+  const ripples = [];   // expanding rings
+  const held = {};      // button -> {x,y,t}
+  let cursor = null;
+  let running = false;
+
+  zri.onMouse((e) => {
+    const now = performance.now();
+    if (e.type === 'down') {
+      ripples.push({ x: e.x, y: e.y, t: now, c: e.button === 'right' ? RIGHT : color });
+      held[e.button] = { x: e.x, y: e.y, t: now, c: e.button === 'right' ? RIGHT : color };
+    } else {
+      const h = held[e.button];
+      if (h) { h.releasedAt = Math.max(now, h.t + 160); } // keep very quick taps visible
+    }
+    kick();
+  });
+  zri.onCursor((p) => { cursor = p; kick(); });
+
+  const count = document.getElementById('count');
+  const num = document.getElementById('num');
+  zri.onCountdown((m) => {
+    const n = m && typeof m === 'object' ? m.n : m;
+    if (m && m.hint !== undefined) document.getElementById('hint').textContent = m.hint;
+    if (!n) { count.classList.remove('show'); return; }
+    num.textContent = n;
+    count.classList.remove('show'); void count.offsetWidth; count.classList.add('show');
+  });
+
+  function kick() { if (!running) { running = true; requestAnimationFrame(frame); } }
+  const ease = (t) => 1 - Math.pow(1 - t, 3);
+
+  function frame(now) {
+    ctx.clearRect(0, 0, W, H);
+    let alive = false;
+
+    if (cursor) {
+      const g = ctx.createRadialGradient(cursor.x, cursor.y, 0, cursor.x, cursor.y, 34);
+      g.addColorStop(0, rgba(color, 0.38));
+      g.addColorStop(0.7, rgba(color, 0.22));
+      g.addColorStop(1, rgba(color, 0));
+      ctx.fillStyle = g;
+      ctx.beginPath(); ctx.arc(cursor.x, cursor.y, 34, 0, Math.PI * 2); ctx.fill();
+      alive = true;
+    }
+
+    // held dot (follows nothing — marks the press point, fades after release)
+    for (const k of Object.keys(held)) {
+      const h = held[k];
+      let a = 1;
+      if (h.releasedAt && now > h.releasedAt) {
+        a = 1 - (now - h.releasedAt) / 260;
+        if (a <= 0) { delete held[k]; continue; }
+      }
+      const grow = ease(Math.min(1, (now - h.t) / 140));
+      ctx.fillStyle = rgba(h.c, 0.42 * a);
+      ctx.beginPath(); ctx.arc(h.x, h.y, 10 + 12 * grow, 0, Math.PI * 2); ctx.fill();
+      ctx.strokeStyle = rgba(h.c, 0.95 * a);
+      ctx.lineWidth = 2.5;
+      ctx.beginPath(); ctx.arc(h.x, h.y, 10 + 12 * grow, 0, Math.PI * 2); ctx.stroke();
+      alive = true;
+    }
+
+    for (let i = ripples.length - 1; i >= 0; i--) {
+      const r = ripples[i];
+      const t = (now - r.t) / 700;
+      if (t >= 1) { ripples.splice(i, 1); continue; }
+      const e = ease(t);
+      ctx.strokeStyle = rgba(r.c, 0.9 * (1 - t));
+      ctx.lineWidth = 4 * (1 - t) + 1.5;
+      ctx.beginPath(); ctx.arc(r.x, r.y, 18 + 38 * e, 0, Math.PI * 2); ctx.stroke();
+      alive = true;
+    }
+
+    if (alive) requestAnimationFrame(frame);
+    else { running = false; ctx.clearRect(0, 0, W, H); }
+  }
+</script>
+</body>
+</html>

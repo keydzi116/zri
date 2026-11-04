@@ -1,0 +1,164 @@
+{
+  "name": "zri",
+  "version": "1.0.0",
+  "description": "Free, open-source Loom-style screen recorder: draggable camera bubble, click highlights, crisp MP4 saved locally.",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "vendor": "bash scripts/fetch-vendor.sh",
+    "dist:mac": "electron-builder --mac --arm64 --x64 && bash scripts/sign-mac.sh",
+    "dist:win": "electron-builder --win --x64",
+    "dist:linux": "electron-builder --linux --x64",
+    "test": "node test/run.js"
+  },
+  "author": "keydzi116",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^44.9.1",
+    "electron-builder": "^26.15.3",
+    "playwright-core": "^1.64.1"
+  },
+  "dependencies": {
+    "koffi": "^3.3.3"
+  },
+  "productName": "Zri",
+  "build": {
+    "appId": "io.github.keydzi116.zri",
+    "productName": "Zri",
+    "copyright": "© 2026 keydzi116",
+    "asar": true,
+    "directories": {
+      "output": "dist",
+      "buildResources": "build"
+    },
+    "files": [
+      "src/**/*",
+      "package.json",
+      "node_modules/koffi/**/*",
+      "!node_modules/@koromix/**",
+      "!node_modules/koffi/src/koffi/src/*.cc",
+      "!node_modules/koffi/src/koffi/src/*.hh",
+      "!node_modules/koffi/vendor/**",
+      "!node_modules/koffi/doc/**",
+      "!node_modules/koffi/lib/native/**"
+    ],
+    "electronLanguages": [
+      "ru",
+      "en"
+    ],
+    "mac": {
+      "target": [
+        {
+          "target": "dir",
+          "arch": [
+            "arm64",
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.icns",
+      "category": "public.app-category.video",
+      "identity": null,
+      "hardenedRuntime": false,
+      "gatekeeperAssess": false,
+      "darkModeSupport": true,
+      "minimumSystemVersion": "12.0",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/darwin-${arch}/ffmpeg",
+          "to": "ffmpeg/ffmpeg"
+        },
+        {
+          "from": "vendor/koffi/darwin-${arch}/package/darwin_${arch}/koffi.node",
+          "to": "koffi/darwin_${arch}/koffi.node"
+        },
+        {
+          "from": "LICENSE",
+          "to": "LICENSE.txt"
+        },
+        {
+          "from": "THIRD_PARTY_NOTICES.md",
+          "to": "THIRD_PARTY_NOTICES.md"
+        }
+      ],
+      "extendInfo": {
+        "NSCameraUsageDescription": "Zri shows your camera in a bubble on top of the screen while recording.",
+        "NSMicrophoneUsageDescription": "Zri records your voice together with the screen.",
+        "NSAudioCaptureUsageDescription": "Zri can record your computer's sound together with the screen.",
+        "NSDesktopFolderUsageDescription": "Zri saves finished videos to your Desktop.",
+        "LSApplicationCategoryType": "public.app-category.video",
+        "CFBundleDevelopmentRegion": "en",
+        "CFBundleLocalizations": [
+          "en",
+          "ru"
+        ]
+      }
+    },
+    "win": {
+      "target": [
+        {
+          "target": "zip",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/win32-x64/ffmpeg.exe",
+          "to": "ffmpeg/ffmpeg.exe"
+        },
+        {
+          "from": "vendor/koffi/win32-x64/package/win32_x64/koffi.node",
+          "to": "koffi/win32_x64/koffi.node"
+        },
+        {
+          "from": "LICENSE",
+          "to": "LICENSE.txt"
+        },
+        {
+          "from": "THIRD_PARTY_NOTICES.md",
+          "to": "THIRD_PARTY_NOTICES.md"
+        }
+      ]
+    },
+    "linux": {
+      "target": [
+        {
+          "target": "AppImage",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.png",
+      "category": "AudioVideo",
+      "extraResources": [
+        {
+          "from": "vendor/ffmpeg/linux-x64/ffmpeg",
+          "to": "ffmpeg/ffmpeg"
+        },
+        {
+          "from": "vendor/koffi/linux-x64/package/linux_x64/koffi.node",
+          "to": "koffi/linux_x64/koffi.node"
+        },
+        {
+          "from": "LICENSE",
+          "to": "LICENSE.txt"
+        },
+        {
+          "from": "THIRD_PARTY_NOTICES.md",
+          "to": "THIRD_PARTY_NOTICES.md"
+        }
+      ]
+    },
+    "publish": null,
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}"
+  },
+  "homepage": "https://github.com/keydzi116/zri",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/keydzi116/zri.git"
+  }
+}

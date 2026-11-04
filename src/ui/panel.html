@@ -1,0 +1,150 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self'; img-src 'self' data:; media-src 'self' blob: mediastream:">
+<title>Zri</title>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<header class="titlebar">
+  <div class="brand"><span class="mark"><i></i></span>Zri</div>
+  <div class="winbtns">
+    <button class="wb" id="minBtn" data-i18n-title="minimize"><svg viewBox="0 0 12 12"><path d="M2 6h8" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+    <button class="wb" id="closeBtn" data-i18n-title="close"><svg viewBox="0 0 12 12"><path d="M3 3l6 6M9 3l-6 6" stroke="currentColor" stroke-width="1.4" stroke-linecap="round"/></svg></button>
+  </div>
+</header>
+
+<main id="viewIdle" class="view">
+  <div id="permCard" class="notice" hidden>
+    <div><b data-i18n="permTitle"></b><span id="permText" data-i18n="permText"></span></div>
+    <div class="perm-btns"><button class="btn small" id="permBtn" data-i18n="permOpen"></button><button class="btn small ghost" id="relaunchBtn" data-i18n="permRestart"></button></div>
+  </div>
+  <div id="errorCard" class="notice error" hidden><div><b id="errTitle" data-i18n="error"></b><span id="errText"></span></div><button class="x" id="errClose">✕</button></div>
+
+  <section class="source" id="sourceCard" data-i18n-title="pickSource">
+    <div class="thumb"><img id="sourceThumb" alt=""><div class="thumb-empty" id="sourceEmpty" data-i18n="screen"></div></div>
+    <div class="source-meta">
+      <div class="label" data-i18n="recording"></div>
+      <div class="name" id="sourceName">—</div>
+    </div>
+    <span class="change" data-i18n="change"></span>
+  </section>
+
+  <section class="group">
+    <div class="row">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/></svg></div>
+      <select id="camSelect" class="sel"></select>
+      <label class="switch"><input type="checkbox" id="camOn"><i></i></label>
+    </div>
+    <div class="sub" id="camSub">
+      <div class="seg" id="shapeSeg">
+        <button data-v="circle" data-i18n-title="shapeCircle"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/></svg></button>
+        <button data-v="square" data-i18n-title="shapeSquare"><svg viewBox="0 0 24 24"><rect x="4.5" y="4.5" width="15" height="15" rx="4"/></svg></button>
+        <button data-v="wide" data-i18n-title="shapeWide"><svg viewBox="0 0 24 24"><rect x="2.5" y="6.5" width="19" height="11" rx="3"/></svg></button>
+      </div>
+      <input type="range" id="sizeRange" min="120" max="600" step="10" data-i18n-title="cameraSize">
+      <button class="chip" id="mirrorBtn" data-i18n-title="mirror">⇋</button>
+    </div>
+
+    <div class="row">
+      <div class="ico"><svg viewBox="0 0 24 24"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></div>
+      <select id="micSelect" class="sel"></select>
+      <label class="switch"><input type="checkbox" id="micOn"><i></i></label>
+    </div>
+    <div class="sub meter-row" id="micSub"><div class="meter"><div id="micLevel"></div></div></div>
+
+    <div class="row" id="sysRow">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M4 9.5h3.5L12 5.5v13l-4.5-4H4z"/><path d="M15.5 9a4 4 0 0 1 0 6M18 6.5a7.5 7.5 0 0 1 0 11"/></svg></div>
+      <div class="txt"><span data-i18n="systemAudio"></span><small id="sysHint"></small></div>
+      <label class="switch"><input type="checkbox" id="sysOn"><i></i></label>
+    </div>
+  </section>
+
+  <section class="group">
+    <div class="row">
+      <div class="ico"><svg viewBox="0 0 24 24"><path d="M6 3.5l12 7.2-5.3 1.3 3.2 6.1-2.4 1.3-3.2-6.1L6 17.4z"/></svg></div>
+      <div class="txt" data-i18n="clickHighlight"></div>
+      <div class="colors" id="colors">
+        <button data-c="#ffd23f" style="--c:#ffd23f"></button>
+        <button data-c="#8b5cf6" style="--c:#8b5cf6"></button>
+        <button data-c="#ff4d6d" style="--c:#ff4d6d"></button>
+        <button data-c="#22d3ee" style="--c:#22d3ee"></button>
+      </div>
+      <label class="switch"><input type="checkbox" id="clicksOn"><i></i></label>
+    </div>
+    <div class="row">
+      <div class="ico"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="7.5"/><circle cx="12" cy="12" r="2.2" fill="currentColor" stroke="none"/></svg></div>
+      <div class="txt" data-i18n="cursorHighlight"></div>
+      <label class="switch"><input type="checkbox" id="cursorOn"><i></i></label>
+    </div>
+  </section>
+
+  <details class="group more" id="more">
+    <summary><span data-i18n="qualityAndSaving"></span><small id="qualitySummary"></small></summary>
+    <div class="row">
+      <div class="txt" data-i18n="resolution"></div>
+      <div class="seg text" id="qualitySeg"><button data-v="native" data-i18n="native"></button><button data-v="1080">1080p</button><button data-v="720">720p</button></div>
+    </div>
+    <div class="row">
+      <div class="txt" data-i18n="fps"></div>
+      <div class="seg text" id="fpsSeg"><button data-v="30">30</button><button data-v="60">60</button></div>
+    </div>
+    <div class="row">
+      <div class="txt" data-i18n="noiseSuppression"></div>
+      <label class="switch"><input type="checkbox" id="nsOn"><i></i></label>
+    </div>
+    <div class="row">
+      <div class="txt" data-i18n="countdown"></div>
+      <label class="switch"><input type="checkbox" id="cdOn"><i></i></label>
+    </div>
+    <div class="row">
+      <div class="txt"><span data-i18n="saveTo"></span><small id="saveDir"></small></div>
+      <button class="btn small ghost" id="saveDirBtn" data-i18n="change"></button>
+    </div>
+  </details>
+
+  <div class="spacer"></div>
+  <footer class="start">
+    <button class="rec-btn" id="startBtn"><span class="rdot"></span><span data-i18n="startRecording"></span></button>
+    <div class="keys" id="keys"></div>
+  </footer>
+</main>
+
+<main id="viewProcessing" class="view center" hidden>
+  <div class="spinner"></div>
+  <h2 data-i18n="saving"></h2>
+  <div class="bar"><div id="procBar"></div></div>
+  <p class="muted" data-i18n="dontClose"></p>
+</main>
+
+<main id="viewDone" class="view" hidden>
+  <div class="done-head"><span class="check">✓</span><div><h2 data-i18n="saved"></h2><p class="muted" id="doneMeta"></p></div></div>
+  <div class="done-thumb" id="doneOpen" data-i18n-title="openVideo"><img id="doneThumb" alt=""><span class="play">▶</span></div>
+  <div class="done-file"><div class="done-name" id="doneName"></div><div class="muted tiny" id="doneFolder"></div></div>
+  <div class="done-actions">
+    <button class="btn" id="openBtn" data-i18n="openVideo"></button>
+    <button class="btn ghost" id="revealBtn" data-i18n="showInFolder"></button>
+  </div>
+  <div class="spacer"></div>
+  <footer class="start">
+    <button class="rec-btn" id="againBtn"><span class="rdot"></span><span data-i18n="newRecording"></span></button>
+    <button class="link" id="backBtn" data-i18n="backToSettings"></button>
+  </footer>
+</main>
+
+<div class="sheet" id="sheet" hidden>
+  <div class="sheet-card">
+    <div class="sheet-head">
+      <div class="seg text" id="srcTabs"><button data-v="screen" class="on" data-i18n="screens"></button><button data-v="window" data-i18n="windows"></button></div>
+      <button class="x" id="sheetClose">✕</button>
+    </div>
+    <div class="grid" id="srcGrid"></div>
+    <p class="muted tiny" id="winNote" hidden data-i18n="windowNote"></p>
+  </div>
+</div>
+
+<div class="toast" id="toast" hidden></div>
+<script src="panel.js"></script>
+</body>
+</html>

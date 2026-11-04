@@ -1,0 +1,124 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'">
+<style>
+  html, body { margin: 0; height: 100%; background: transparent; overflow: hidden; user-select: none; }
+  body { display: flex; align-items: center; justify-content: center; font-family: -apple-system, "SF Pro Text", "Segoe UI", system-ui, sans-serif; }
+  .pill {
+    -webkit-app-region: drag; height: 48px; padding: 0 6px 0 14px; display: flex; align-items: center; gap: 4px;
+    background: rgba(17,18,21,.94); border-radius: 26px; color: #fff;
+    box-shadow: 0 6px 16px rgba(0,0,0,.32), inset 0 0 0 1px rgba(255,255,255,.08);
+  }
+  .rec { display: flex; align-items: center; gap: 8px; min-width: 84px; }
+  .dot { width: 10px; height: 10px; border-radius: 50%; background: #ff4a4a; box-shadow: 0 0 0 3px rgba(255,74,74,.22); animation: blink 1.4s ease-in-out infinite; }
+  .paused .dot { background: #ffb020; box-shadow: 0 0 0 3px rgba(255,176,32,.22); animation: none; }
+  .starting .dot { background: rgba(255,255,255,.4); box-shadow: none; animation: none; }
+  @keyframes blink { 50% { opacity: .35 } }
+  .time { font: 600 15px/1 ui-monospace, "SF Mono", Menlo, Consolas, monospace; font-variant-numeric: tabular-nums; letter-spacing: .02em; }
+  .meter { width: 34px; height: 18px; display: flex; align-items: flex-end; gap: 2px; margin: 0 4px 0 2px; }
+  .meter i { flex: 1; background: rgba(255,255,255,.18); border-radius: 1.5px; height: 20%; transition: height .08s, background .08s; }
+  .meter.on i { background: #3ddc84; }
+  .meter.muted i { background: rgba(255,255,255,.12); height: 20% !important; }
+  .sep { width: 1px; height: 22px; background: rgba(255,255,255,.12); margin: 0 4px; }
+  button {
+    -webkit-app-region: no-drag; width: 36px; height: 36px; border: 0; border-radius: 50%; padding: 0;
+    background: transparent; color: rgba(255,255,255,.88); display: grid; place-items: center; cursor: pointer;
+  }
+  button:hover { background: rgba(255,255,255,.1); }
+  button svg { width: 19px; height: 19px; }
+  button.off { color: #ff6b6b; }
+  #stop { background: #ff4a4a; color: #fff; width: 38px; height: 38px; margin-left: 2px; }
+  #stop:hover { background: #ff6262; }
+  #cancel.confirm { background: rgba(255,74,74,.2); color: #ff8080; }
+  .size { font: 500 11px/1 -apple-system, "Segoe UI", system-ui, sans-serif; color: rgba(255,255,255,.4); margin-left: -2px; min-width: 40px; }
+</style>
+</head>
+<body>
+<div class="pill" id="pill">
+  <div class="rec"><span class="dot"></span><span class="time" id="time">0:00</span></div>
+  <div class="meter" id="meter"><i></i><i></i><i></i><i></i><i></i></div>
+  <span class="size" id="size"></span>
+  <div class="sep"></div>
+  <button id="mic">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/><path id="micslash" d="M4 4l16 16" style="display:none"/></svg>
+  </button>
+  <button id="cam">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="6" width="13" height="12" rx="2.5"/><path d="M16 10.5l5-3v9l-5-3"/><path id="camslash" d="M3 4l17 17" style="display:none"/></svg>
+  </button>
+  <button id="pause">
+    <svg id="pauseIcon" viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1.2"/><rect x="14" y="5" width="4" height="14" rx="1.2"/></svg>
+    <svg id="playIcon" viewBox="0 0 24 24" fill="currentColor" style="display:none"><path d="M8 5.5v13a1 1 0 0 0 1.5.86l10.5-6.5a1 1 0 0 0 0-1.72L9.5 4.64A1 1 0 0 0 8 5.5z"/></svg>
+  </button>
+  <button id="cancel">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13"/></svg>
+  </button>
+  <button id="stop">
+    <svg viewBox="0 0 24 24" fill="currentColor"><rect x="6.5" y="6.5" width="11" height="11" rx="2"/></svg>
+  </button>
+</div>
+<script>
+  const $ = (id) => document.getElementById(id);
+  const t = zri.t;
+  let keys = {};
+  $('cancel').title = t('deleteRecording');
+  let st = { status: 'starting', elapsedMs: 0, at: Date.now(), muted: false };
+
+  function fmt(ms) {
+    const s = Math.floor(ms / 1000), h = Math.floor(s / 3600), m = Math.floor((s % 3600) / 60), r = s % 60;
+    return (h ? h + ':' + String(m).padStart(2, '0') : m) + ':' + String(r).padStart(2, '0');
+  }
+  function mb(b) { return b > 0 ? (b / 1048576).toFixed(b > 104857600 ? 0 : 1) + ' ' + t('mb') : ''; }
+
+  function render() {
+    const el = st.status === 'recording' ? st.elapsedMs + (Date.now() - st.at) : st.elapsedMs;
+    $('time').textContent = fmt(el);
+    $('pill').classList.toggle('paused', st.status === 'paused');
+    $('pill').classList.toggle('starting', st.status === 'starting');
+    $('pauseIcon').style.display = st.status === 'paused' ? 'none' : '';
+    $('playIcon').style.display = st.status === 'paused' ? '' : 'none';
+    tip('pause', t(st.status === 'paused' ? 'resume' : 'pause'), keys.pause);
+    $('micslash').style.display = st.muted ? '' : 'none';
+    $('mic').classList.toggle('off', !!st.muted);
+    $('meter').classList.toggle('muted', !!st.muted || st.noMic);
+    $('size').textContent = mb(st.bytes || 0);
+  }
+  setInterval(render, 250);
+
+  zri.onRecState((s) => { st = { ...st, ...s }; render(); });
+  zri.onLevel((v) => {
+    const bars = $('meter').children;
+    $('meter').classList.toggle('on', v > 0.02);
+    for (let i = 0; i < bars.length; i++) {
+      const th = (i + 1) / bars.length;
+      const h = Math.max(0.2, Math.min(1, (v * 1.6 - (i * 0.08)) / Math.max(th, 0.3)));
+      bars[i].style.height = Math.round(h * 100) + '%';
+    }
+  });
+  function camUI(s) { $('camslash').style.display = s.cameraOn ? 'none' : ''; $('cam').classList.toggle('off', !s.cameraOn); }
+  zri.getSettings().then(camUI);
+  zri.onSettings(camUI);
+
+  $('stop').onclick = () => zri.command('stop');
+  $('pause').onclick = () => zri.command('toggle-pause');
+  $('mic').onclick = () => zri.command('toggle-mute');
+  $('cam').onclick = () => zri.command('camera-toggle');
+  let confirmTimer = null;
+  $('cancel').onclick = () => {
+    const c = $('cancel');
+    if (c.classList.contains('confirm')) { clearTimeout(confirmTimer); zri.command('cancel'); return; }
+    c.classList.add('confirm'); c.title = t('deleteConfirm');
+    confirmTimer = setTimeout(() => { c.classList.remove('confirm'); c.title = t('deleteRecording'); }, 2500);
+  };
+  function tip(id, base, key) { $(id).title = key ? `${base} (${key})` : base; }
+  function tips() {
+    tip('mic', t('micToggle'), keys.mute); tip('cam', t('camToggle'), keys.camera);
+    tip('pause', t(st.status === 'paused' ? 'resume' : 'pause'), keys.pause); tip('stop', t('finishAndSave'), keys.toggle);
+  }
+  tips();
+  zri.shortcuts().then((k) => { keys = k || {}; tips(); });
+  render();
+</script>
+</body>
+</html>
